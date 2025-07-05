@@ -41,3 +41,23 @@ def save_tracking(chat_id, tracking_number):
     data[str(chat_id)] = {"tracking_number": tracking_number, "last_status": ""}
     with open(suivis_file, "w") as f:
         json.dump(data, f, indent=2)
+        
+import httpx
+import asyncio
+
+async def enregistrer_sur_17track(numero):
+    headers = {
+        "17token": os.getenv("SEVENTEENTRACK_TOKEN"),
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "number": numero
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post("https://api.17track.net/trackings/post", json=payload, headers=headers)
+            print("📡 Envoi à 17track:", response.status_code, response.text)
+    except Exception as e:
+        print("❌ Erreur API 17track:", e)
+
