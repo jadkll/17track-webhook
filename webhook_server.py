@@ -47,3 +47,12 @@ async def recevoir_webhook(request: Request):
 @app.on_event("startup")
 def startup_event():
     threading.Thread(target=bot_telegram.main, daemon=True).start()
+
+from telegram import Bot
+
+bot = Bot(token=os.getenv("TELEGRAM_TOKEN"))
+
+def notifier_utilisateur(numero, texte):
+    for user_id, suivi in commandes.items():
+        if suivi == numero:
+            bot.send_message(chat_id=user_id, text=f"📦 Mise à jour pour {numero} :\n\n{texte}")
