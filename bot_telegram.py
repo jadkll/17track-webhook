@@ -1,114 +1,81 @@
 import os
 import json
+from fastapi import FastAPI, Request
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import Dispatcher, CommandHandler, CallbackQueryHandler, MessageHandler, Filters, CallbackContext
+from telegram.utils.request import Request as TGRequest
 import httpx
-from telegram import Bot, Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import (
-    Dispatcher,
-    CommandHandler,
-    MessageHandler,
-    Filters,
-    CallbackContext,
-    ConversationHandler
-)
 
-TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+# --- Configurations ---
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 SEVENTEENTRACK_TOKEN = os.environ.get("SEVENTEENTRACK_TOKEN")
-bot = Bot(token=TOKEN)
+HEADERS = {"17token": SEVENTEENTRACK_TOKEN, "Content-Type": "application/json"}
 
+bot = Bot(token=TELEGRAM_TOKEN, request=TGRequest())
 dispatcher = Dispatcher(bot, None, workers=1, use_context=True)
+app = FastAPI()
 
-# États de la conversation
-SUIVI_COMMANDE, AVIS = range(2)
+# --- Fichier de stockage suivi ---
+SUIVIS_FILE = "suivis.json"
+def load_suivis():
+    if not os.path.exists(SUIVIS_FILE):
+        return {}
+    with open(SUIVIS_FILE, "r") as f:
+        return json.load(f)
 
-# Chargement du fichier JSON
-def charger_suivis():
-    if os.path.exists("suivis.json"):
-        with open("suivis.json", "r") as f:
-            return json.load(f)
-    return {}
+def save_suivis(data):
+    with open(SUIVIS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
 
-def enregistrer_suivi(code, user_id):
-    suivis = charger_suivis()
-    if code not in suivis:
-        suivis[code] = {"user_id": user_id}
-        with open("suivis.json", "w") as f:
-            json.dump(suivis, f, indent=2)
-
-        # Ajouter à l'API 17track
-        headers = {
-            "17token": SEVENTEENTRACK_TOKEN,
-            "Content-Type": "application/json"
-        }
-        data = {"numbers": [code]}
-        httpx.post("https://api.17track.net/track/v2/register", headers=headers, json=data)
-
+# --- Commande /start dans groupe ---
 def start(update: Update, context: CallbackContext):
-    chat_type = update.message.chat.type
-    if chat_type != "private":
-        update.message.reply_text("Merci de me parler en message privé pour utiliser le bot.")
-        return
-
-    boutons = [
-        [KeyboardButton("🔥 Voir les best sellers")],
-        [KeyboardButton("📝 Passer une commande")],
-        [KeyboardButton("📦 Suivre ma commande")],
-        [KeyboardButton("💬 Laisser un avis")]
+    keyboard = [
+        [InlineKeyboardButton("🔥 Voir les best sellers", callback_data="bestsellers")],
+        [InlineKeyboardButton("📝 Passer une commande", callback_data="commande")],
+        [InlineKeyboardButton("📦 Suivre ma commande", callback_data="suivi")],
+        [InlineKeyboardButton("💬 Laisser un avis", callback_data="avis")],
     ]
-    reply_markup = ReplyKeyboardMarkup(boutons, resize_keyboard=True)
+    reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text("Bienvenue ! Choisis une option ci-dessous :", reply_markup=reply_markup)
 
-def recevoir_message(update: Update, context: CallbackContext):
-    text = update.message.text
+# --- Callback des boutons ---
+def handle_callback(update: Update, context: CallbackContext):
+    query = update.callback_query
+    user_id = query.from_user.id
+    query.answer()
 
-    if text == "📦 Suivre ma commande":
-        update.message.reply_text("Bienvenue ! Envoie-moi ton numéro de suivi.")
-        return SUIVI_COMMANDE
+    if query.data == "suivi":
+        bot.send_message(chat_id=user_id, text="📦 Envoie-moi ton numéro de suivi ici.")
+    elif query.data == "avis":
+        bot.send_message(chat_id=user_id, text="💬 Tu peux laisser ton avis ici, merci !")
+    elif query.data == "bestsellers":
+        bot.send_message(chat_id=user_id, text="🔥 Nos best sellers sont :\n1. Produit A\n2. Produit B")
+    elif query.data == "commande":
+        bot.send_message(chat_id=user_id, text="📝 Pour passer commande, suis ce lien : https://tonsite.com")
 
-    elif text == "💬 Laisser un avis":
-        update.message.reply_text("Laisse ton avis ici 👇")
-        return AVIS
+# --- Réception du numéro de suivi en DM ---
+def handle_message(update: Update, context: CallbackContext):
+    user_id = str(update.message.from_user.id)
+    tracking_number = update.message.text.strip().upper()
 
-    elif text == "🔥 Voir les best sellers":
-        update.message.reply_text("🛍️ Voici nos best sellers :\n1. Produit A\n2. Produit B")
+    suivis = load_suivis()
+    if tracking_number not in suivis:
+        # Ajouter le suivi via API 17track
+        httpx.post("https://api.17track.net/track/v2/register", headers=HEADERS, json={"numbers": [tracking_number]})
+        suivis[tracking_number] = {"user_id": user_id}
+        save_suivis(suivis)
 
-    elif text == "📝 Passer une commande":
-        update.message.reply_text("🧾 Pour passer commande, contacte @TonCompteTelegram.")
+    update.message.reply_text("✅ Numéro enregistré. Vous recevrez des mises à jour ici.")
 
-    else:
-        update.message.reply_text("Commande non reconnue. Choisis une option du menu.")
-
-    return ConversationHandler.END
-
-def recevoir_suivi(update: Update, context: CallbackContext):
-    code = update.message.text.strip()
-    user_id = update.effective_user.id
-    enregistrer_suivi(code, user_id)
-    update.message.reply_text(f"Ton suivi **{code}** a été enregistré ✅", parse_mode="Markdown")
-    return ConversationHandler.END
-
-def recevoir_avis(update: Update, context: CallbackContext):
-    avis = update.message.text.strip()
-    user = update.effective_user
-    print(f"Avis de {user.username or user.id} : {avis}")
-    update.message.reply_text("Merci pour ton avis 🙏")
-    return ConversationHandler.END
-
-def cancel(update: Update, context: CallbackContext):
-    update.message.reply_text("Opération annulée.")
-    return ConversationHandler.END
-
-# Handler de conversation
-conv_handler = ConversationHandler(
-    entry_points=[MessageHandler(Filters.text & ~Filters.command, recevoir_message)],
-    states={
-        SUIVI_COMMANDE: [MessageHandler(Filters.text & ~Filters.command, recevoir_suivi)],
-        AVIS: [MessageHandler(Filters.text & ~Filters.command, recevoir_avis)],
-    },
-    fallbacks=[CommandHandler("cancel", cancel)],
-    per_user=True,
-    per_chat=False
-)
-
-# Ajout des handlers
+# --- Dispatcher handlers ---
 dispatcher.add_handler(CommandHandler("start", start))
-dispatcher.add_handler(conv_handler)
+dispatcher.add_handler(CallbackQueryHandler(handle_callback))
+dispatcher.add_handler(MessageHandler(Filters.private & Filters.text, handle_message))
+
+# --- Webhook endpoint ---
+@app.post("/webhook")
+async def webhook(req: Request):
+    data = await req.json()
+    update = Update.de_json(data, bot)
+    dispatcher.process_update(update)
+    return {"ok": True}
