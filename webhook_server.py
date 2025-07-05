@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 import threading
 import json
 import os
-import bot_telegram  # Assure-toi que ce fichier est présent dans le même dossier
+import bot_telegram  # Ton fichier renommé correctement
 
 app = FastAPI()
 
@@ -45,5 +45,5 @@ async def recevoir_webhook(request: Request):
         return {"success": False, "error": str(e)}
 
 @app.on_event("startup")
-async def startup_event():
+def startup_event():
     threading.Thread(target=bot_telegram.main, daemon=True).start()
