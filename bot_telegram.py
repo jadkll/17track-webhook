@@ -15,10 +15,9 @@ bot = Bot(token=TELEGRAM_TOKEN, request=TGRequest())
 dispatcher = Dispatcher(bot, None, workers=1, use_context=True)
 app = FastAPI()
 
-commandes = {}
-
 # --- Fichier de stockage suivi ---
 SUIVIS_FILE = "suivis.json"
+
 def load_suivis():
     if not os.path.exists(SUIVIS_FILE):
         return {}
@@ -29,37 +28,41 @@ def save_suivis(data):
     with open(SUIVIS_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
-# --- Commande /start dans groupe ---
+# --- Commande /start dans le groupe ---
 def start(update: Update, context: CallbackContext):
-    keyboard = [
-        [InlineKeyboardButton("🔥 Voir les best sellers", callback_data="bestsellers")],
-        [InlineKeyboardButton("📝 Passer une commande", callback_data="commande")],
-        [InlineKeyboardButton("📦 Suivre ma commande", callback_data="suivi")],
-        [InlineKeyboardButton("💬 Laisser un avis", callback_data="avis")],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text("Bienvenue ! Choisis une option ci-dessous :", reply_markup=reply_markup)
+    if update.message.chat.type in ["group", "supergroup"]:
+        keyboard = [
+            [InlineKeyboardButton("🔥 Voir les best sellers", callback_data="bestsellers")],
+            [InlineKeyboardButton("📝 Passer une commande", callback_data="commande")],
+            [InlineKeyboardButton("📦 Suivre ma commande", callback_data="suivi")],
+            [InlineKeyboardButton("💬 Laisser un avis", callback_data="avis")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        update.message.reply_text("Bienvenue ! Choisis une option ci-dessous :", reply_markup=reply_markup)
 
 # --- Callback des boutons ---
 def handle_callback(update: Update, context: CallbackContext):
     query = update.callback_query
     user_id = query.from_user.id
-    query.answer()
 
-    if query.data == "suivi":
-        bot.send_message(chat_id=user_id, text="📦 Envoie-moi ton numéro de suivi ici.")
-    elif query.data == "avis":
-        bot.send_message(chat_id=user_id, text="💬 Tu peux laisser ton avis ici, merci !")
-    elif query.data == "bestsellers":
-        bot.send_message(chat_id=user_id, text="🔥 Nos best sellers sont :\n1. Produit A\n2. Produit B")
-    elif query.data == "commande":
-        bot.send_message(chat_id=user_id, text="📝 Pour passer commande, suis ce lien : https://tonsite.com")
+    try:
+        query.answer()  # Répond immédiatement pour éviter l'erreur de timeout
+
+        if query.data == "suivi":
+            bot.send_message(chat_id=user_id, text="📦 Envoie-moi ton numéro de suivi ici.")
+        elif query.data == "avis":
+            bot.send_message(chat_id=user_id, text="💬 Tu peux laisser ton avis ici, merci !")
+        elif query.data == "bestsellers":
+            bot.send_message(chat_id=user_id, text="🔥 Nos best sellers sont :\n1. Produit A\n2. Produit B")
+        elif query.data == "commande":
+            bot.send_message(chat_id=user_id, text="📝 Pour passer commande, suis ce lien : https://tonsite.com")
+    except Exception as e:
+        print("❌ Erreur callback:", e)
 
 # --- Réception du numéro de suivi en DM ---
 def handle_message(update: Update, context: CallbackContext):
     user_id = str(update.message.from_user.id)
     tracking_number = update.message.text.strip().upper()
-    commandes[user_id] = tracking_number
 
     suivis = load_suivis()
     if tracking_number not in suivis:
@@ -75,14 +78,7 @@ dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(CallbackQueryHandler(handle_callback))
 dispatcher.add_handler(MessageHandler(Filters.private & Filters.text, handle_message))
 
-# --- Webhook endpoint ---
-@app.post("/webhook")
-async def webhook(req: Request):
-    data = await req.json()
-    update = Update.de_json(data, bot)
-    dispatcher.process_update(update)
-    return {"ok": True}
-    
-def handle_update(data):
-    update = Update.de_json(data, bot)
+# --- Fonction appelée depuis webhook_server ---
+def handle_update(payload):
+    update = Update.de_json(payload, bot)
     dispatcher.process_update(update)
