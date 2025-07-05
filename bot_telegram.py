@@ -15,6 +15,8 @@ bot = Bot(token=TELEGRAM_TOKEN, request=TGRequest())
 dispatcher = Dispatcher(bot, None, workers=1, use_context=True)
 app = FastAPI()
 
+commandes = {}
+
 # --- Fichier de stockage suivi ---
 SUIVIS_FILE = "suivis.json"
 def load_suivis():
