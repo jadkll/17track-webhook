@@ -144,6 +144,8 @@ def cancel(update: Update, context: CallbackContext):
     update.message.reply_text("❌ Annulé.")
     return ConversationHandler.END
 
+import time
+
 def main():
     updater = Updater(TOKEN)
     dp = updater.dispatcher
@@ -163,6 +165,14 @@ def main():
     dp.add_handler(conv_handler)
 
     updater.start_polling()
+
+    # 🚫 Ne pas utiliser updater.idle() dans Render
+    # ✅ Garde le thread en vie proprement :
+    try:
+        while True:
+            time.sleep(10)
+    except KeyboardInterrupt:
+        updater.stop()
 
 if __name__ == '__main__':
     main()
