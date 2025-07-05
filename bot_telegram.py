@@ -163,7 +163,6 @@ def main():
     dp.add_handler(conv_handler)
 
     updater.start_polling()
-    updater.idle()
 
 if __name__ == '__main__':
     main()
