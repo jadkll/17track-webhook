@@ -2,26 +2,20 @@ from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (Updater, CommandHandler, CallbackQueryHandler,
                           ConversationHandler, MessageHandler, Filters, CallbackContext)
 import json
-import time
 import os
 
-# --- Config ---
-TOKEN = "7730051219:AAEX9y8dky-PobSLBiAATD8bIPBlbLQRebE"
+TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
 
-# Mapping topic_id -> vendeur_user_id
 vendeurs_par_topic = {
     -1002493828642: 6258031868,
 }
 
-# Mémoire utilisateur → topic
 utilisateur_topic = {}
 commandes = {}
 avis_clients = {}
 
-# Étapes de la conversation
 SUIVI_COMMANDE, AVIS = range(2)
 
-# Lecture de la base de données locale (fichier JSON)
 def charger_donnees_suivi():
     try:
         with open("suivis.json", "r", encoding="utf-8") as f:
