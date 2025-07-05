@@ -4,7 +4,7 @@ from telegram.ext import (Updater, CommandHandler, CallbackQueryHandler,
 import json
 import os
 
-TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 vendeurs_par_topic = {
     -1002493828642: 6258031868,
