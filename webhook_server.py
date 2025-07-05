@@ -46,4 +46,4 @@ async def recevoir_webhook(request: Request):
 
 @app.on_event("startup")
 async def startup_event():
-    threading.Thread(target=bot_telegram_api_only.main, daemon=True).start()
+    threading.Thread(target=bot_telegram.main, daemon=True).start()
