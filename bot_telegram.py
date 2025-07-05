@@ -59,6 +59,7 @@ def handle_callback(update: Update, context: CallbackContext):
 def handle_message(update: Update, context: CallbackContext):
     user_id = str(update.message.from_user.id)
     tracking_number = update.message.text.strip().upper()
+    commandes[user_id] = tracking_number
 
     suivis = load_suivis()
     if tracking_number not in suivis:
