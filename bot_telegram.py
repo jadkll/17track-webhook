@@ -84,6 +84,6 @@ def setup_dispatcher(dispatcher: Dispatcher):
 
 async def handle_update(update_json):
     update = Update.de_json(update_json, bot)
-    dispatcher = Dispatcher(bot, None, workers=0, use_context=True)
+    dispatcher = Dispatcher(bot, None, workers=1, use_context=True)
     setup_dispatcher(dispatcher)
     dispatcher.process_update(update)
