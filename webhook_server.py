@@ -1,13 +1,14 @@
 import os
 import json
-
 from fastapi import FastAPI, Request
-from bot_telegram import handle_update, commandes, bot
+from bot_telegram import handle_update, bot
 
 app = FastAPI()
 
 SUIVIS_FILE = "suivis.json"
 
+# Structure temporaire pour stocker les commandes utilisateurs
+commandes = {}
 
 def sauvegarder_suivi(numero, donnees):
     try:
@@ -24,13 +25,11 @@ def sauvegarder_suivi(numero, donnees):
     with open(SUIVIS_FILE, "w", encoding="utf-8") as f:
         json.dump(tous_les_suivis, f, indent=2, ensure_ascii=False)
 
-
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
     payload = await request.json()
-    await handle_update(payload)
+    handle_update(payload)  # ✅ Ne pas mettre "await"
     return {"status": "ok"}
-
 
 @app.post("/")
 async def recevoir_webhook_17track(request: Request):
