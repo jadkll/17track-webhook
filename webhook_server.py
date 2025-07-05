@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 import threading
 import json
 import os
-import bot_telegram_api_only  # Assure-toi que ce fichier est présent dans le même dossier
+import bot_telegram  # Assure-toi que ce fichier est présent dans le même dossier
 
 app = FastAPI()
 
