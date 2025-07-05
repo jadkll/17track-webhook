@@ -79,3 +79,7 @@ async def webhook(req: Request):
     update = Update.de_json(data, bot)
     dispatcher.process_update(update)
     return {"ok": True}
+    
+def handle_update(data):
+    update = Update.de_json(data, bot)
+    dispatcher.process_update(update)
