@@ -66,12 +66,22 @@ def handle_message(update: Update, context: CallbackContext):
 
     suivis = load_suivis()
     if tracking_number not in suivis:
-        # Ajouter le suivi via API 17track
-        httpx.post("https://api.17track.net/track/v2/register", headers=HEADERS, json={"numbers": [tracking_number]})
-        suivis[tracking_number] = {"user_id": user_id}
-        save_suivis(suivis)
+        response = httpx.post(
+            "https://api.17track.net/track/v2/register",
+            headers=HEADERS,
+            json={"numbers": [tracking_number]}
+        )
 
-    update.message.reply_text("✅ Numéro enregistré. Vous recevrez des mises à jour ici.")
+        print("📦 17track response:", response.status_code, response.text)
+
+        if response.status_code == 200:
+            suivis[tracking_number] = {"user_id": user_id}
+            save_suivis(suivis)
+            update.message.reply_text("✅ Numéro enregistré. Vous recevrez des mises à jour ici.")
+        else:
+            update.message.reply_text("❌ Une erreur est survenue lors de l’enregistrement du numéro. Réessaie plus tard.")
+    else:
+        update.message.reply_text("✅ Numéro déjà enregistré. Vous recevrez des mises à jour ici.")
 
 # --- Dispatcher handlers ---
 dispatcher.add_handler(CommandHandler("start", start))
