@@ -76,6 +76,7 @@ def handle_message(update: Update, context: CallbackContext):
 
         if response.status_code == 200:
             suivis[tracking_number] = {"user_id": user_id}
+            print("💾 Sauvegarde du suivi :", suivis)
             save_suivis(suivis)
             update.message.reply_text("✅ Numéro enregistré. Vous recevrez des mises à jour ici.")
         else:
