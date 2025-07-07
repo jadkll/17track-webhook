@@ -5,6 +5,7 @@ from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Dispatcher, CommandHandler, CallbackQueryHandler, MessageHandler, Filters, CallbackContext
 from telegram.utils.request import Request as TGRequest
 import httpx
+from bot_telegram import sheets_utils
 
 # --- Configurations ---
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -15,23 +16,6 @@ bot = Bot(token=TELEGRAM_TOKEN, request=TGRequest())
 dispatcher = Dispatcher(bot, None, workers=1, use_context=True)
 app = FastAPI()
 
-# --- Fichier de stockage suivi ---
-SUIVIS_FILE = "suivis.json"
-
-def load_suivis():
-    try:
-        if os.path.exists(SUIVIS_FILE):
-            with open(SUIVIS_FILE, "r", encoding="utf-8") as f:
-                content = f.read().strip()
-                return json.loads(content) if content else {}
-        return {}
-    except json.JSONDecodeError:
-        print("⚠️ Erreur: suivis.json est vide ou corrompu. Réinitialisation.")
-        return {}
-
-def save_suivis(data):
-    with open(SUIVIS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
 
 # --- Commande /start dans le groupe ---
 def start(update: Update, context: CallbackContext):
@@ -76,35 +60,19 @@ def handle_message(update: Update, context: CallbackContext):
     user_id = str(update.message.from_user.id)
     tracking_number = update.message.text.strip().upper()
 
-    suivis = load_suivis()
+    existing_user_id = sheets_utils.get_user_id(tracking_number)
 
-    # ✅ Si le numéro existe déjà dans la base
-    if tracking_number in suivis:
-        suivis[tracking_number]["user_id"] = user_id  # Met à jour l'association
-        save_suivis(suivis)
-
-        latest_status = suivis[tracking_number].get("latest_status", {})
-        latest_event = suivis[tracking_number].get("latest_event", {})
-
-        status = latest_status.get("status", "Inconnu")
-        location = latest_event.get("location", "Inconnu")
-        time = latest_event.get("time", "Inconnu")
-        description = latest_event.get("description", "Aucune description")
-
+    # ✅ Numéro déjà suivi
+    if existing_user_id:
         msg = (
-            f"📦 Statut : {status}\n"
-            f"🗺️ Lieu : {location}\n"
-            f"🕒 Date : {time}\n"
-            f"📝 {description}\n\n"
+            "📦 Ce numéro est déjà enregistré.\n"
             "✅ Tu recevras automatiquement les prochaines mises à jour ici."
         )
         update.message.reply_text(msg)
 
-    # ❌ Si le numéro est encore inconnu
+    # ❌ Nouveau numéro
     else:
-        suivis[tracking_number] = {"user_id": user_id}
-        save_suivis(suivis)
-
+        sheets_utils.ajouter_suivi(tracking_number, user_id)
         update.message.reply_text(
             "🔍 Le numéro a bien été enregistré, mais il n’y a pas encore d’information disponible.\n"
             "📬 Tu recevras les mises à jour automatiquement ici dès qu’on en aura."
