@@ -76,7 +76,7 @@ async def recevoir_webhook_17track(request: Request):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-from bot_telegram.commandes import handle_update  # ou l’import adapté
+from bot_telegram import handle_update
 
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
