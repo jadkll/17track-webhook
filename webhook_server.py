@@ -1,7 +1,7 @@
 import os
 import json
 from fastapi import FastAPI, Request
-from bot_telegram import bot, commandes
+from bot_telegram import bot
 
 app = FastAPI()
 SUIVIS_FILE = "suivis.json"
@@ -41,11 +41,11 @@ async def recevoir_webhook_17track(request: Request):
         # Initialisation si nouveau
         if numero not in suivis:
             suivis[numero] = {
-                "history": [],
-                "user_id": None  # sera rempli plus tard par le bot
+                "user_id": None,
+                "history": []
             }
 
-        # Ajouter à l'historique si nouveau
+        # Ajouter à l'historique si c'est un nouvel événement
         event_entry = {
             "time": latest_event.get("time"),
             "location": latest_event.get("location"),
@@ -57,14 +57,21 @@ async def recevoir_webhook_17track(request: Request):
         if event_entry not in suivis[numero]["history"]:
             suivis[numero]["history"].append(event_entry)
 
+            # ✅ Notifier l'utilisateur s'il est connu
+            user_id = suivis[numero].get("user_id")
+            if user_id:
+                msg = (
+                    f"📦 Mise à jour pour {numero} :\n\n"
+                    f"📍 {event_entry['location']}\n"
+                    f"🕒 {event_entry['time']}\n"
+                    f"📋 {event_entry['description']}"
+                )
+                try:
+                    bot.send_message(chat_id=user_id, text=msg)
+                except Exception as e:
+                    print(f"❌ Erreur d'envoi Telegram : {e}")
+
         sauvegarder_suivis(suivis)
-
-        # ✅ Notifier l'utilisateur s'il est connu
-        for chat_id, suivi in commandes.items():
-            if suivi == numero:
-                message = f"📦 Mise à jour pour {numero} :\n\n📍 {event_entry['location']}\n🕒 {event_entry['time']}\n📋 {event_entry['description']}"
-                bot.send_message(chat_id=chat_id, text=message)
-
         return {"success": True, "message": "Suivi mis à jour"}
     except Exception as e:
         return {"success": False, "error": str(e)}
