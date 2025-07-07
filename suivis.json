@@ -1,12 +1,1 @@
-{
-  "LB123456789CN": {
-    "latest_status": {
-      "status": "In Transit"
-    },
-    "latest_event": {
-      "location": "Shanghai, China",
-      "time": "2025-07-05T08:45:00Z",
-      "description": "Departed from origin facility"
-    }
-  }
-}
+
