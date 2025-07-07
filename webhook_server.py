@@ -21,7 +21,7 @@ async def recevoir_webhook_17track(request: Request):
             return {"success": False, "error": "Numéro ou infos manquants."}
 
         # --- Enregistrement initial si nécessaire
-        enregistrer_suivi(numero, user_id=None)
+        ajouter_suivi(numero, user_id=None)
 
         # --- Récupération des infos à notifier
         event_entry = {
@@ -35,7 +35,7 @@ async def recevoir_webhook_17track(request: Request):
         maj_suivi(numero, event_entry["location"], event_entry["time"], event_entry["description"], event_entry["status"])
 
         # --- Notification si on connaît le user_id
-        user_id = trouver_user_par_numero(numero)
+        user_id = get_user_id(numero)
         if user_id:
             msg = (
                 f"📦 Mise à jour pour {numero} :\n\n"
