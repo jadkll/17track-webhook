@@ -38,7 +38,14 @@ def start(update: Update, context: CallbackContext):
             [InlineKeyboardButton("💬 Laisser un avis", callback_data="avis")],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        update.message.reply_text("Bienvenue ! Choisis une option ci-dessous :", reply_markup=reply_markup)
+
+        # ✅ Envoie sans répondre au message de l'admin
+        context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Bienvenue ! Choisis une option ci-dessous :",
+            reply_markup=reply_markup,
+            reply_to_message_id=None  # Évite de répondre au message /start
+        )
 
 # --- Callback des boutons ---
 def handle_callback(update: Update, context: CallbackContext):
@@ -65,24 +72,38 @@ def handle_message(update: Update, context: CallbackContext):
     tracking_number = update.message.text.strip().upper()
 
     suivis = load_suivis()
-    if tracking_number not in suivis:
-        response = httpx.post(
-            "https://api.17track.net/track/v2/register",
-            headers=HEADERS,
-            json={"numbers": [tracking_number]}
+
+    # ✅ Si le numéro existe déjà dans la base
+    if tracking_number in suivis:
+        suivis[tracking_number]["user_id"] = user_id  # Met à jour l'association
+        save_suivis(suivis)
+
+        latest_status = suivis[tracking_number].get("latest_status", {})
+        latest_event = suivis[tracking_number].get("latest_event", {})
+
+        status = latest_status.get("status", "Inconnu")
+        location = latest_event.get("location", "Inconnu")
+        time = latest_event.get("time", "Inconnu")
+        description = latest_event.get("description", "Aucune description")
+
+        msg = (
+            f"📦 Statut : {status}\n"
+            f"🗺️ Lieu : {location}\n"
+            f"🕒 Date : {time}\n"
+            f"📝 {description}\n\n"
+            "✅ Tu recevras automatiquement les prochaines mises à jour ici."
         )
+        update.message.reply_text(msg)
 
-        print("📦 17track response:", response.status_code, response.text)
-
-        if response.status_code == 200:
-            suivis[tracking_number] = {"user_id": user_id}
-            print("💾 Sauvegarde du suivi :", suivis)
-            save_suivis(suivis)
-            update.message.reply_text("✅ Numéro enregistré. Vous recevrez des mises à jour ici.")
-        else:
-            update.message.reply_text("❌ Une erreur est survenue lors de l’enregistrement du numéro. Réessaie plus tard.")
+    # ❌ Si le numéro est encore inconnu
     else:
-        update.message.reply_text("✅ Numéro déjà enregistré. Vous recevrez des mises à jour ici.")
+        suivis[tracking_number] = {"user_id": user_id}
+        save_suivis(suivis)
+
+        update.message.reply_text(
+            "🔍 Le numéro a bien été enregistré, mais il n’y a pas encore d’information disponible.\n"
+            "📬 Tu recevras les mises à jour automatiquement ici dès qu’on en aura."
+        )
 
 # --- Dispatcher handlers ---
 dispatcher.add_handler(CommandHandler("start", start))
