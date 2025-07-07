@@ -22,7 +22,6 @@ def sauvegarder_suivis(data):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 # --- Endpoint Webhook 17TRACK ---
-@app.post("")
 @app.post("/")
 async def recevoir_webhook_17track(request: Request):
     payload = await request.json()
