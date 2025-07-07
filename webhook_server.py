@@ -2,7 +2,7 @@ import os
 import json
 from fastapi import FastAPI, Request
 from bot_telegram.bot import bot  # Ou bot si renommé
-from bot_telegram.sheet_utils import enregistrer_suivi, maj_suivi, trouver_user_par_numero
+from bot_telegram.sheet_utils import enregistrer_suivi, maj_suivi, user_id
 
 app = FastAPI()
 
