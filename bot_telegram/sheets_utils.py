@@ -20,7 +20,7 @@ def ajouter_suivi(numero, user_id):
 
     sheet.append_row([numero, str(user_id), "", "", "", ""])  # Ajoute une ligne vide prête à être remplie
 
-def mettre_a_jour_suivi(numero, location, time, description, status):
+def maj_suivi(numero, location, time, description, status):
     lignes = sheet.get_all_records()
     for i, ligne in enumerate(lignes):
         if ligne["numero"] == numero:
