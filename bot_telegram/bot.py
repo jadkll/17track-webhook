@@ -19,14 +19,19 @@ app = FastAPI()
 SUIVIS_FILE = "suivis.json"
 
 def load_suivis():
-    if not os.path.exists(SUIVIS_FILE):
+    try:
+        if os.path.exists(SUIVIS_FILE):
+            with open(SUIVIS_FILE, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                return json.loads(content) if content else {}
         return {}
-    with open(SUIVIS_FILE, "r") as f:
-        return json.load(f)
+    except json.JSONDecodeError:
+        print("⚠️ Erreur: suivis.json est vide ou corrompu. Réinitialisation.")
+        return {}
 
 def save_suivis(data):
-    with open(SUIVIS_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+    with open(SUIVIS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
 
 # --- Commande /start dans le groupe ---
 def start(update: Update, context: CallbackContext):
